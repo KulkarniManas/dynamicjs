@@ -1,113 +1,277 @@
+"use client"
 import Image from "next/image";
+import { Editor } from "@monaco-editor/react";
+import { useState } from "react";
+import parseCode from './utils/acorn'
+import codeImage from './images/code.jpeg'
 
 export default function Home() {
+
+  const [code, setCode] = useState('//Start coding here')
+  const [variables, setVariables] = useState([] as any)
+  const [stack, setStack] = useState([] as any)
+  const [heap, setHeap] = useState([] as any)
+  const [open,setOpen] = useState(false)
+
+  function handleCodeChange(value: any, event: any) {
+    setCode(value)
+
+  }
+
+  const modalHandeler = ()=>{
+     setOpen(!open)
+  }
+
+  const getVariables = () => {
+    let stackvalues: any[] = []
+    let heapvalues: any[] = []
+
+    const variables = parseCode(code)
+    setVariables(variables)
+    console.log(variables)
+
+
+    // now add into stack and queue
+    variables.forEach((item) => {
+
+
+
+      if (item.dataType === 'object') {
+        stackvalues.push({ variable: item.name, value: 'Object Reference', color : 'bg-yellow-800 text-white text-bold' ,associated : 'reference'})
+        heapvalues.push({variable : item.name,value : Object.entries(item.value).map((key,value)=>{return JSON.stringify({key : key,value:value})}),color : 'bg-yellow-800 text-white text-bold'})
+        // Object.entries(item.value).forEach(([key,value])=>{
+        //   console.log(key,value)
+        // })
+      }
+      else if (item.type === 'function') {
+        stackvalues.push({ variable: item.name, value: 'Function Reference' , color : 'bg-pink-600 text-white text-bold',associated : 'reference'})
+        heapvalues.push({variable : item.name,value:item.body,color : 'bg-pink-600 text-white text-bold'})}
+
+      else if(item.dataType === 'array'){
+           let arrayvalues : any [] = []
+           stackvalues.push({variable : item.name,value : 'Array Reference',color : 'bg-gray-600 text-white text-bold',associated : 'reference'})
+           item.value.forEach((item:any)=>{
+                arrayvalues.push(item.value + " ")
+           })
+           heapvalues.push({variable : item.name,value : "[" + arrayvalues + "]",color : 'bg-gray-600 text-white text-bold' })
+
+      }
+
+      else {
+        stackvalues.push({ variable: item.name, value: item.value ,color : 'bg-red-400 text-white text-bold',associated : 'primitive'})
+      }
+    })
+
+    setStack(stackvalues)
+    setHeap(heapvalues)
+
+
+    //console.log(stack, 'stack')
+    //console.log(heap,'heap')
+
+  
+
+
+  }
+
+
+  // deleteFromHeap
+  const deleteFromHeap = (id:number) =>{
+
+    //  delete from heap
+    // make the heap reference null
+
+    // get the heap reference
+    let heapval = heap[id]
+    let name = heapval.variable
+    //console.log(name)
+    
+    const ref_stack = stack.map((item:any)=>{
+      if(item.variable === name ){
+         item.value = 'null'
+      }
+
+      return item
+    })
+
+    setStack(ref_stack)
+
+
+    // remove the element from the heap
+     const newHeap = heap.filter((item:any)=> item.variable!==name)
+     console.log(newHeap,'heapval')
+     setHeap(newHeap)
+    console.log(ref_stack)
+    
+    
+
+     
+  }
+
+  const runGarbageCollectior = () =>{
+       
+    let newStack = stack.filter((item:any)=>item.value!=='null')
+    setStack(newStack)
+  }
+
+
+  const deleteVariables = (id:number) =>{
+
+    let toDelete = stack[id]
+    let newStack : any [] = []
+    if(toDelete.associated === 'primitive'){
+       newStack = stack.filter((item:any)=>item.variable!==toDelete.variable)
+       setStack(newStack)
+    }
+    
+      
+  }
+
+
+
+
+
+
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <section className="w-screen h-screen bg-black flex flex-col">
+      <div className="w-full flex items-center justify-around">
+      <button className="bg-blue-600 w-1/4 p-4 my-2 mx-2 self-center" onClick={runGarbageCollectior}>
+          Run Garbage Collector
+        </button>
+
+        <button className="bg-blue-600 w-[20%] p-4 my-2 mx-2 text-lg text-white self-center" onClick={modalHandeler}>
+          Info
+        </button>
+      </div>
+      
+      <section className="w-full h-full flex bg-black p-4  justify-around gap-2" >
+
+        
+
+        <div className="w-1/2 h-full bg-white flex flex-col-reverse">
+          
+          {stack.map((item:any,index:number)=>{
+                return (
+                  <div key={index} className={`w-full ${item.color} h-[40px] text-center text-lg my-2`} onClick={()=>{deleteVariables(index)}}>
+                     {item.variable} = {item.value}
+                  </div>
+                )
+          })}
+
+        </div>
+
+        
+
+        <div className="w-1/2 bg-white h-full flex flex-col-reverse">
+             
+        {heap.map((item:any,index:number)=>{
+                return (
+                  <div key={index} className={`w-full ${item.color} h-auto text-center text-lg my-2`} onClick={()=>deleteFromHeap(index)}>
+                     {item.variable} = {item.value}
+                  </div>
+                )
+          })}
+
+        </div>
+
+      </section>
+      <div className="flex p-4 w-full h-max-content justify-around items-start bg-red-400 ">
+        <Editor
+          height="40vh"
+          width="200vh"
+          defaultLanguage='javascript'
+          value={code}
+          theme='vs-dark'
+          options={{fontSize : 20}}
+          onChange={handleCodeChange}
+          className="text-lg"
+        />
+      
+      <div className=" self-center  flex items-center w-full justify-center">
+        <button onClick={getVariables} className="w-1/2 p-2 bg-orange-400 text-white font-mono ">
+          Submit
+        </button>
         </div>
       </div>
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-full sm:before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full sm:after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
 
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
+      {open ?<div className="w-screen h-screen backdrop-blur-sm flex items-center justify-center absolute ">
+        <div className="bg-slate-200 w-3/4 h-3/4  overflow-y-scroll rounded-xl backdrop-blur-lg border-4 border-red-800 flex flex-col gap-6">
+        <span onClick={modalHandeler} className="cursor-pointer">
+          Close
+        </span>
+        <h1 className="text-2xl text-center font-mono text-bold uppercase">Memory Management Simulation!</h1>
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
+        <div className="bg-white w-full self-start mx-4 p-4">
+          <h2 className="text-xl text-bold underline">About this Simulator</h2>
+          <p>
+            This is a simulator application, which demonstrates allocation of memory in Javascript.
+            <h3 className="text-lg text-bold uppercase italic mt-4">The Code Editor</h3>
+            <p>In the available code editor, the user can enter the javascript code, for memory allocation of javascript types.</p>
+            <p>The <b>'let'</b>, <b>'const'</b> and <b> 'var'</b> keywords are used to declare a variable in javascript</p>
+            <Image src={codeImage} alt = 'image' width={1000} height={1000} className="p-4"/>
+            <p>Once you hit the <b>'Submit'</b> button, all the variable declarations are accordingly added to the containers above! </p>
 
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore starter templates for Next.js.
           </p>
-        </a>
+        </div>
 
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50 text-balance`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+        <div className="bg-white w-full self-start mx-4 p-4 rounded-lg">
+          <h2 className="text-xl text-bold underline">How memory Management is handled in this Simulator!</h2>
+            <h3 className="mt-2 text-lg text-bold">What data structures are added to the Stack?</h3>
+            <ol className="mt-4">
+            <li>1. The primitive data structures, whose memory size is decided at runtime, are allocated into the stack</li>
+            <li>2. The variables, which store references to Objects, Functions and Arrays. </li>
+            </ol>
+
+            <h3 className="mt-2 text-lg text-bold">What data structures are added to the Heap?</h3>
+            <ol className="mt-4">
+            <li>1. The function body is added to the heap!</li>
+            <li>2. The Objects are added to the heap </li>
+            <li>3. The Arrays are added to the heap</li>
+            </ol>
+            
+            
+
+        </div>
+
+        <div className="bg-white w-full self-start mx-4 p-4 rounded-lg">
+          <h2 className="text-2xl text-bold underline">Deallocation of Memory!</h2>
+            <h3 className="mt-2 text-lg text-bold underline ">Deallocation of the Heap Memory</h3>
+            <p className="mt-2">To Deallocate the memory in the heap, just <b>Click!</b> on the memory block </p>
+            <p><b>Once you Click on the memory block in the heap!</b></p>
+            <ul>
+              <li>1. The memory block dissapears!</li>
+              <li>2. The memory block pointing to it in the stack, becomes null, and ready for garbage collection!</li>
+            </ul>
+
+            <h3 className="mt-2 text-lg text-bold underline ">Deallocation of the Stack Memory</h3>
+            <p className="mt-2">To Deallocate the memory of primitive types, in the stack, just <b>Click!</b> on the memory block </p>
+            <p><b>Once you Click on the memory block in the stack!</b></p>
+            <ul>
+              <li>The memory block dissapears!</li>
+              
+            </ul>
+            
+            
+
+        </div>
+
+
+        <div className="bg-white w-full self-start mx-4 my-4 p-4 rounded-lg">
+          <h1 className="text-2xl underline text-bold my-4">The Garbage Collector</h1>
+            <p>For all the memory blocks, which are available for garbage collection, i.e the variables which have become 'null' are removed from the memory</p>
+            <p>Mark and Sweep algoritms works same, but a bit complex to visualize here!</p>
+            
+
+        </div>
+      </div></div> :null}
+
+
+
+
+    </section>
+
+
   );
 }
